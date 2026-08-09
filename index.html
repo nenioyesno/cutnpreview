@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>미컷프(미니 컷 & 프리뷰)</title>
+<style>
+  :root{
+    --paper:#b9e2ff;
+    --ink:#0e2733;
+    --sub:#3d6478;
+    --accent:#0fb98b;
+    --accent-dark:#0a9773;
+    --warn:#ff6b4a;
+    --panel:#ffffff;
+    --line:#ffffff;
+    --mint-soft:#eaf7f2;
+    --sky-soft:#eaf6ff;
+  }
+  *{box-sizing:border-box;}
+  html{ overflow-x:hidden; }
+  body{ margin:0; background:var(--paper); color:var(--ink); overflow-x:hidden;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Malgun Gothic",sans-serif; }
+  .app{ max-width:1180px; margin:0 auto; padding:20px 16px 60px; overflow-x:hidden; }
+  header{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:18px; flex-wrap:wrap; }
+  header h1{ font-size:23px; margin:0; letter-spacing:-0.02em; color:var(--ink); }
+  header h1 .scissors{ display:inline-block; margin-right:6px; }
+  header p{ margin:4px 0 0; font-size:13px; color:var(--ink); opacity:0.75; }
+  .layout{ display:grid; grid-template-columns:300px 1fr; gap:16px; }
+  .layout > div{ min-width:0; }
+  @media (max-width:860px){ .layout{grid-template-columns:1fr;} }
+  .panel{
+    background:var(--panel); border:3px solid var(--line); border-radius:16px; padding:16px;
+    box-shadow:0 8px 20px rgba(15,90,150,0.16); min-width:0; max-width:100%;
+  }
+  .panel h2{ font-size:13px; margin:0 0 10px; color:var(--accent-dark); letter-spacing:0.02em; font-weight:800; display:flex; align-items:center; gap:6px; }
+
+  /* upload */
+  .upload-row{ display:flex; gap:10px; align-items:stretch; }
+  .drop-square{
+    width:84px; height:84px; flex-shrink:0; border:3px dashed var(--accent); border-radius:14px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+    cursor:pointer; background:var(--mint-soft); text-align:center; transition:border-color .15s, background .15s, transform .1s;
+  }
+  .drop-square:hover, .drop-square.dragover{ background:#d5f4e9; transform:scale(1.03); }
+  .drop-square .big{ font-size:24px; }
+  .drop-square .txt{ font-size:10px; color:var(--accent-dark); line-height:1.3; font-weight:700; }
+  input[type=file]{display:none;}
+  .upload-info{ flex:1; min-width:0; display:flex; flex-direction:column; }
+  .upload-info-head{ font-size:12.5px; font-weight:800; color:var(--ink); margin-bottom:6px; }
+  .upload-info-head.empty{ color:var(--sub); font-weight:600; }
+  .upload-list{ font-size:11.5px; color:var(--sub); max-height:110px; overflow-y:auto; display:flex; flex-direction:column; gap:4px; padding-right:2px; }
+  .upload-list .file-row{ display:flex; align-items:center; gap:6px; background:var(--sky-soft); border-radius:8px; padding:5px 7px; }
+  .file-row .idx{ color:var(--accent-dark); flex-shrink:0; }
+  .file-row .fname{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; color:var(--ink); font-weight:600; }
+  .file-row .ok{ flex-shrink:0; }
+  .file-row .rm{
+    flex-shrink:0; width:18px; height:18px; border-radius:50%; background:#fff; border:1.5px solid var(--warn);
+    color:var(--warn); font-size:10px; font-weight:900; display:flex; align-items:center; justify-content:center; cursor:pointer;
+  }
+  .file-row .rm:hover{ background:var(--warn); color:#fff; }
+
+  /* mode tabs */
+  .mode-tabs{ display:flex; gap:6px; margin-bottom:12px; }
+  .mode-tab{
+    flex:1; text-align:center; padding:9px 6px; border-radius:10px; font-size:11.5px; font-weight:800;
+    border:2px solid #fff; background:var(--sky-soft); color:var(--sub); cursor:pointer;
+    box-shadow:0 2px 6px rgba(15,90,150,0.08); line-height:1.3;
+  }
+  .mode-tab.active{ background:var(--accent); color:#fff; border-color:#fff; box-shadow:0 3px 8px rgba(15,185,139,0.3); }
+  .mode-panel{ display:none; }
+  .mode-panel.active{ display:block; }
+
+  /* grid cut settings */
+  .hint-box{
+    font-size:11.5px; color:var(--ink); background:var(--sky-soft); border-radius:10px; padding:10px 11px;
+    line-height:1.55; margin-bottom:10px; border:2px solid #fff; box-shadow:0 2px 6px rgba(15,90,150,0.08);
+  }
+  .orient-row{ display:flex; gap:8px; margin:6px 0 10px; }
+  .orient-btn{
+    flex:1; padding:14px 6px; border-radius:12px; border:2.5px solid var(--sky-soft); background:var(--sky-soft);
+    cursor:pointer; text-align:center; font-size:12px; font-weight:700; color:var(--ink);
+  }
+  .orient-btn .dims{ display:block; font-size:11px; font-weight:500; color:var(--sub); margin-top:3px; }
+  .orient-btn.active{ border-color:var(--accent); background:#ffffff; box-shadow:0 3px 8px rgba(15,185,139,0.25); }
+  .orient-btn.active .dims{ color:var(--accent-dark); }
+
+  .btn{ width:100%; border:none; border-radius:12px; padding:12px 12px; font-size:13px; font-weight:800; cursor:pointer; transition:transform .1s, opacity .1s; }
+  .btn:active{transform:scale(0.97);}
+  .btn-primary{background:var(--accent);color:#fff; box-shadow:0 4px 10px rgba(15,185,139,0.35);}
+  .btn-primary:disabled{opacity:0.35;cursor:not-allowed; box-shadow:none;}
+  .status{ font-size:12px; color:var(--sub); margin-top:10px; line-height:1.5; min-height:16px; }
+
+  .gallery-head{ display:flex; justify-content:space-between; align-items:center; gap:6px; }
+  .gallery-head .right{ display:flex; align-items:center; gap:8px; }
+  .mini-link{
+    font-size:11.5px; font-weight:800; color:var(--accent-dark); background:var(--mint-soft);
+    border:2px solid #fff; border-radius:8px; cursor:pointer; padding:5px 9px; box-shadow:0 2px 5px rgba(15,185,139,0.15);
+  }
+  .mini-link:hover{ background:var(--accent); color:#fff; }
+  .gallery{ display:grid; grid-template-columns:repeat(auto-fill,minmax(64px,1fr)); gap:8px; margin-top:10px; }
+  .sticker-thumb{
+    position:relative; border:3px solid #fff; border-radius:12px; padding:6px;
+    background:
+      linear-gradient(45deg,#eaf6ff 25%,transparent 25%) -4px 0/8px 8px,
+      linear-gradient(-45deg,#eaf6ff 25%,transparent 25%) -4px 0/8px 8px,
+      #ffffff;
+    cursor:grab; aspect-ratio:1/1; display:flex; align-items:center; justify-content:center;
+    transition:border-color .12s, transform .12s, box-shadow .12s;
+    box-shadow:0 2px 6px rgba(15,90,150,0.10);
+  }
+  .sticker-thumb:hover{ border-color:var(--accent); transform:translateY(-2px) scale(1.03); box-shadow:0 5px 12px rgba(15,185,139,0.25); }
+  .sticker-thumb img{ max-width:100%; max-height:100%; pointer-events:none; }
+  .sticker-thumb .plus{
+    position:absolute; top:2px; right:2px; background:var(--accent); color:#fff; border-radius:50%;
+    width:18px;height:18px; font-size:12px; display:flex;align-items:center;justify-content:center; opacity:0; transition:opacity .12s;
+    box-shadow:0 2px 4px rgba(0,0,0,0.2);
+  }
+  .sticker-thumb .dl{
+    position:absolute; top:2px; left:2px; background:var(--ink); color:#fff; border-radius:50%;
+    width:18px;height:18px; font-size:10px; display:flex;align-items:center;justify-content:center; opacity:0; transition:opacity .12s; cursor:pointer;
+    box-shadow:0 2px 4px rgba(0,0,0,0.2);
+  }
+  .sticker-thumb:hover .plus, .sticker-thumb:hover .dl{opacity:1;}
+  .sticker-thumb .tag{
+    position:absolute; bottom:-1px; right:-1px; background:var(--accent-dark); color:#fff; font-size:9px;
+    padding:1px 5px; border-radius:6px 0 6px 0; opacity:0.92;
+  }
+  .empty-note{ font-size:12px; color:var(--sub); text-align:center; padding:20px 4px; grid-column:1/-1; }
+
+  /* workspace */
+  .bg-color-row{ display:flex; align-items:center; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
+  .bg-label{ font-size:12px; font-weight:800; color:var(--accent-dark); display:flex; align-items:center; gap:4px; }
+  .swatches{ display:flex; gap:7px; }
+  .swatch{
+    width:32px; height:32px; border-radius:10px; border:2.5px solid #fff;
+    cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;
+    box-shadow:0 2px 6px rgba(15,90,150,0.15);
+  }
+  .swatch .check{ font-size:14px; font-weight:900; opacity:0; }
+  .swatch.active{ box-shadow:0 0 0 2px #fff, 0 0 0 4px var(--accent); }
+  .swatch.active .check{ opacity:1; }
+  .swatch.sw-none{
+    background:
+      linear-gradient(45deg,#cfc7ae 25%,transparent 25%),
+      linear-gradient(-45deg,#cfc7ae 25%,transparent 25%),
+      linear-gradient(45deg,transparent 75%,#cfc7ae 75%),
+      linear-gradient(-45deg,transparent 75%,#cfc7ae 75%);
+    background-size:10px 10px; background-position:0 0,0 5px,5px -5px,-5px 0px; background-color:#f4f1e8;
+  }
+
+  /* tip box */
+  .tip-box{
+    display:flex; gap:10px; align-items:flex-start; background:linear-gradient(135deg,#fff9e0,#fff3cf);
+    border:3px solid #fff; border-radius:14px; padding:12px 14px; margin-bottom:12px;
+    box-shadow:0 6px 16px rgba(15,90,150,0.14);
+  }
+  .tip-box .emoji{ font-size:20px; flex-shrink:0; line-height:1.2; }
+  .tip-box .txt{ font-size:12.5px; line-height:1.6; color:#5b4a12; }
+  .tip-box .txt b{ color:#8a6d00; }
+
+  .workspace-toolbar{ display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; gap:10px; flex-wrap:wrap; }
+  .workspace-toolbar .left{ font-size:12px; color:var(--sub); }
+  .toolbar-btns{ display:flex; gap:8px; }
+  .tbtn{
+    border:2.5px solid #fff; background:var(--sky-soft); border-radius:10px; padding:8px 13px; font-size:12px;
+    font-weight:700; cursor:pointer; color:var(--ink); box-shadow:0 2px 6px rgba(15,90,150,0.1);
+  }
+  .tbtn:hover{ background:#dcefff; }
+  .tbtn.accent{ background:var(--accent); border-color:#fff; color:#fff; box-shadow:0 3px 8px rgba(15,185,139,0.35); }
+  .tbtn.accent:hover{ background:var(--accent-dark); }
+
+  .mat-wrap{ border-radius:16px; overflow:hidden; border:3px solid #fff; box-shadow:0 8px 22px rgba(15,90,150,0.18); max-width:100%; }
+  #workspace{ position:relative; width:100%; aspect-ratio:1/1; touch-action:none; }
+  .placeholder-hint{
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    color:rgba(0,0,0,0.38); font-size:13px; text-align:center; padding:20px; pointer-events:none;
+    text-shadow:0 1px 2px rgba(255,255,255,0.5);
+  }
+
+  .sticker{ position:absolute; cursor:grab; user-select:none; touch-action:none; }
+  .sticker img{ width:100%; height:100%; display:block; pointer-events:none; }
+  .sticker.selected{ outline:3px dashed var(--warn); outline-offset:2px; z-index:999 !important; }
+  .handle{ position:absolute; width:20px;height:20px; border-radius:50%; background:#fff; border:2.5px solid var(--accent-dark); display:none; }
+  .sticker.selected .handle{display:block;}
+  .handle.rotate{ left:50%;top:-30px; transform:translateX(-50%); cursor:grab; }
+  .del-btn{
+    position:absolute; top:-10px;right:-10px; width:22px;height:22px; border-radius:50%; background:var(--warn);
+    color:#fff; border:2.5px solid #fff; font-size:13px; line-height:1; display:none; align-items:center; justify-content:center; cursor:pointer;
+    box-shadow:0 2px 5px rgba(0,0,0,0.25);
+  }
+  .sticker.selected .del-btn{display:flex;}
+
+  canvas.hidden-canvas{display:none;}
+  footer{ margin-top:16px; font-size:11px; color:var(--ink); opacity:0.6; text-align:center; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div>
+      <h1><span class="scissors">🧙</span>미컷프(미니 컷 & 프리뷰)</h1>
+      <p>🐸 미니 이모티콘 PNG를 올리면 180×180 규격으로 잘라서, 한 화면에서 조합해볼 수 있어요.</p>
+    </div>
+  </header>
+
+  <div class="layout">
+    <div class="left-col">
+      <div class="panel">
+        <h2>📤 1. 원본 업로드</h2>
+        <div class="upload-row">
+          <div class="drop-square" id="dropZone">
+            <div class="big">📸</div>
+            <div class="txt">탭하거나<br>끌어놓기</div>
+          </div>
+          <input type="file" id="fileInput" accept="image/png,image/*" multiple>
+          <div class="upload-info">
+            <div class="upload-info-head empty" id="uploadHead">아직 불러온 이미지가 없어요</div>
+            <div class="upload-list" id="uploadList"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:14px;">
+        <h2>✂️ 2. 자르기 설정</h2>
+        <div class="mode-tabs">
+          <div class="mode-tab active" data-mode="three">✂️ 3등분<br>180×180</div>
+          <div class="mode-tab" data-mode="full42">🧷 42컷 전체시트<br>1080×1260</div>
+        </div>
+
+        <div class="mode-panel active" id="panel-three">
+          <div class="hint-box">📏 긴 쪽이 540px, 짧은 쪽이 180px이 되도록 맞춘 뒤, 540px 쪽을 180px씩 3등분해요. 원본이 이 크기보다 크면 가운데를 기준으로 잘라내고, 작으면 꽉 차게 늘려요.</div>
+          <div class="orient-row">
+            <div class="orient-btn active" id="orientH">↔️ 가로 540<span class="dims">540×180</span></div>
+            <div class="orient-btn" id="orientV">↕️ 세로 540<span class="dims">180×540</span></div>
+          </div>
+          <button class="btn btn-primary" id="gridProcessBtn" disabled>✂️ 3등분으로 자르기</button>
+        </div>
+
+        <div class="mode-panel" id="panel-full42">
+          <div class="hint-box">🧷 한 판에 42개를 그린 시트용이에요. 이미지를 1080×1260px(가로 6칸 × 세로 7칸)에 맞춘 뒤, 180×180px 조각 42개로 한 번에 나눠요. 원본이 이 크기보다 크면 가운데를 기준으로 잘라내고, 작으면 꽉 차게 늘려요.</div>
+          <button class="btn btn-primary" id="full42ProcessBtn" disabled>🧷 42조각으로 자르기</button>
+        </div>
+
+        <div class="status" id="status"></div>
+      </div>
+
+      <div class="panel" style="margin-top:14px;">
+        <div class="gallery-head">
+          <h2>🧩 3. 오려낸 조각</h2>
+          <div class="right">
+            <span class="status" id="galleryCount" style="margin:0;"></span>
+            <button class="mini-link" id="saveAllBtn" style="display:none;">📦 ZIP 전체 저장</button>
+          </div>
+        </div>
+        <div class="gallery" id="gallery">
+          <div class="empty-note" id="galleryEmpty">🗂️ 아직 오려낸 조각이 없어요.<br>이미지를 올리고 실행해보세요.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="right-col">
+      <div class="panel">
+        <div class="tip-box">
+          <div class="emoji">💡</div>
+          <div class="txt"><b>Tip.</b> 작업한 사이즈가 서로 얼마나 차이 나는지 궁금하다면, 조각 두 개를 같은 칸 위로 드래그해서 겹쳐보세요! 크기 차이를 눈으로 바로 비교해볼 수 있어요. 🔍</div>
+        </div>
+
+        <div class="bg-color-row">
+          <span class="bg-label">🎨 배경컬러</span>
+          <div class="swatches" id="swatches">
+            <button class="swatch active" data-key="skyblue" style="background:rgb(178,199,218);"><span class="check" style="color:#1c2420;">✓</span></button>
+            <button class="swatch" data-key="yellow" style="background:#FFE45E;"><span class="check" style="color:#1c2420;">✓</span></button>
+            <button class="swatch" data-key="white" style="background:#FFFFFF;"><span class="check" style="color:#1c2420;">✓</span></button>
+            <button class="swatch" data-key="black" style="background:#141414;"><span class="check" style="color:#fff;">✓</span></button>
+            <button class="swatch sw-none" data-key="none"><span class="check" style="color:#1c2420;">✓</span></button>
+          </div>
+        </div>
+        <div class="workspace-toolbar">
+          <div class="left">👆 조각을 탭하면 보드 위 칸에 맞춰 올라가요. 드래그하면 놓을 때 격자에 자석처럼 붙어요. 이 보드는 미리보기용이라 화면에 맞춰 줄어들고, 저장하면 1620×1620 원본 해상도로 나가요.</div>
+          <div class="toolbar-btns">
+            <button class="tbtn" id="clearBoard">🗑️ 보드 비우기</button>
+            <button class="tbtn accent" id="downloadBtn">💾 PNG로 저장</button>
+          </div>
+        </div>
+        <div class="mat-wrap">
+          <div id="workspace">
+            <div class="placeholder-hint" id="wsHint">🖼️ 여기에 조각을 올려 조합해보세요</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>🔒 모든 처리는 이 브라우저 안에서만 이루어지고, 업로드한 이미지는 서버로 전송되지 않아요.</footer>
+</div>
+
+<canvas class="hidden-canvas" id="exportCanvas"></canvas>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+(function(){
+  const dropZone = document.getElementById('dropZone');
+  const fileInput = document.getElementById('fileInput');
+  const uploadHead = document.getElementById('uploadHead');
+  const uploadList = document.getElementById('uploadList');
+  const statusEl = document.getElementById('status');
+  const gallery = document.getElementById('gallery');
+  const galleryEmpty = document.getElementById('galleryEmpty');
+  const galleryCount = document.getElementById('galleryCount');
+  const saveAllBtn = document.getElementById('saveAllBtn');
+  const workspace = document.getElementById('workspace');
+  const wsHint = document.getElementById('wsHint');
+  const clearBoard = document.getElementById('clearBoard');
+  const downloadBtn = document.getElementById('downloadBtn');
+  const exportCanvas = document.getElementById('exportCanvas');
+
+  const modeTabs = document.querySelectorAll('.mode-tab');
+  const panelThree = document.getElementById('panel-three');
+  const panelFull42 = document.getElementById('panel-full42');
+  const orientH = document.getElementById('orientH');
+  const orientV = document.getElementById('orientV');
+  const gridProcessBtn = document.getElementById('gridProcessBtn');
+  const full42ProcessBtn = document.getElementById('full42ProcessBtn');
+  const swatchBtns = document.querySelectorAll('.swatch');
+
+  const TILE = 180;
+  const LONG = TILE * 3;       // 540 — 3등분 모드
+  const SHEET_W = TILE * 6;    // 1080
+  const SHEET_H = TILE * 7;    // 1260
+  const SHEET_COLS = 6, SHEET_ROWS = 7; // 42조각
+
+  let loadedImages = []; // {name, img}
+  let stickers = [];     // {dataUrl, w, h, tag}
+  let placed = [];       // {x,y,rot,el,img}
+  let zCounter = 1;
+  let selectedItem = null;
+  let orientation = 'horizontal';
+
+  const swatchDefs = {
+    skyblue: {bg:'rgb(178,199,218)', grid:'rgba(0,0,0,0.16)'},
+    yellow:  {bg:'#FFE45E', grid:'rgba(0,0,0,0.16)'},
+    white:   {bg:'#FFFFFF', grid:'rgba(0,0,0,0.10)'},
+    black:   {bg:'#141414', grid:'rgba(255,255,255,0.18)'},
+    none:    {bg:null, grid:'rgba(0,0,0,0.16)'}
+  };
+  let currentBgKey = 'skyblue';
+
+  function applyBg(key){
+    currentBgKey = key;
+    const def = swatchDefs[key];
+    const cellPct = 100/9;
+    if(key === 'none'){
+      workspace.style.backgroundColor = '#f4f1e8';
+      workspace.style.backgroundImage =
+        'linear-gradient(45deg,#cfc7ae 25%,transparent 25%),'+
+        'linear-gradient(-45deg,#cfc7ae 25%,transparent 25%),'+
+        'linear-gradient(45deg,transparent 75%,#cfc7ae 75%),'+
+        'linear-gradient(-45deg,transparent 75%,#cfc7ae 75%),'+
+        'linear-gradient('+def.grid+' 1px, transparent 1px),'+
+        'linear-gradient(90deg, '+def.grid+' 1px, transparent 1px)';
+      workspace.style.backgroundSize = '14px 14px,14px 14px,14px 14px,14px 14px,'+cellPct+'% '+cellPct+'%,'+cellPct+'% '+cellPct+'%';
+      workspace.style.backgroundPosition = '0 0,0 7px,7px -7px,-7px 0px,0 0,0 0';
+    } else {
+      workspace.style.backgroundColor = def.bg;
+      workspace.style.backgroundImage =
+        'linear-gradient('+def.grid+' 1px, transparent 1px),'+
+        'linear-gradient(90deg, '+def.grid+' 1px, transparent 1px)';
+      workspace.style.backgroundSize = cellPct+'% '+cellPct+'%';
+      workspace.style.backgroundPosition = '0 0';
+    }
+    swatchBtns.forEach(b=> b.classList.toggle('active', b.dataset.key === key));
+  }
+  swatchBtns.forEach(b=> b.addEventListener('click', ()=> applyBg(b.dataset.key)));
+  applyBg('skyblue');
+
+  // ---------- mode tabs ----------
+  modeTabs.forEach(tab=>{
+    tab.addEventListener('click', ()=>{
+      modeTabs.forEach(t=>t.classList.remove('active'));
+      tab.classList.add('active');
+      const m = tab.dataset.mode;
+      panelThree.classList.toggle('active', m === 'three');
+      panelFull42.classList.toggle('active', m === 'full42');
+      setStatus('');
+    });
+  });
+
+  // ---------- orientation controls ----------
+  orientH.addEventListener('click', ()=>{ orientation='horizontal'; orientH.classList.add('active'); orientV.classList.remove('active'); });
+  orientV.addEventListener('click', ()=>{ orientation='vertical'; orientV.classList.add('active'); orientH.classList.remove('active'); });
+
+  // ---------- Upload handling (multiple, removable) ----------
+  dropZone.addEventListener('click', ()=>fileInput.click());
+  dropZone.addEventListener('dragover', e=>{e.preventDefault(); dropZone.classList.add('dragover');});
+  dropZone.addEventListener('dragleave', ()=>dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', e=>{
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    if(e.dataTransfer.files && e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
+  });
+  fileInput.addEventListener('change', e=>{
+    if(e.target.files && e.target.files.length) handleFiles(e.target.files);
+    fileInput.value = '';
+  });
+
+  function handleFiles(fileList){
+    const files = Array.from(fileList).filter(f=>f.type.startsWith('image/'));
+    if(files.length === 0) return;
+    files.forEach(file=>{
+      const reader = new FileReader();
+      reader.onload = e=>{
+        const img = new Image();
+        img.onload = ()=>{
+          loadedImages.push({ name:file.name, img });
+          renderUploadList();
+          gridProcessBtn.disabled = false;
+          full42ProcessBtn.disabled = false;
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function removeImage(idx){
+    loadedImages.splice(idx, 1);
+    renderUploadList();
+    if(loadedImages.length === 0){
+      gridProcessBtn.disabled = true;
+      full42ProcessBtn.disabled = true;
+    }
+  }
+
+  function renderUploadList(){
+    if(loadedImages.length === 0){
+      uploadHead.textContent = '아직 불러온 이미지가 없어요';
+      uploadHead.classList.add('empty');
+      uploadList.innerHTML = '';
+      return;
+    }
+    uploadHead.classList.remove('empty');
+    uploadHead.textContent = '✅ 이미지를 ' + loadedImages.length + '개 불러왔어요';
+    uploadList.innerHTML = '';
+    loadedImages.forEach((item, i)=>{
+      const row = document.createElement('div');
+      row.className = 'file-row';
+      const idx = document.createElement('span');
+      idx.className = 'idx';
+      idx.textContent = (i+1) + '.';
+      const fname = document.createElement('span');
+      fname.className = 'fname';
+      fname.textContent = item.name;
+      const ok = document.createElement('span');
+      ok.className = 'ok';
+      ok.textContent = '🟢';
+      const rm = document.createElement('span');
+      rm.className = 'rm';
+      rm.textContent = '×';
+      rm.title = '삭제';
+      rm.addEventListener('click', ()=> removeImage(i));
+      row.appendChild(idx);
+      row.appendChild(fname);
+      row.appendChild(ok);
+      row.appendChild(rm);
+      uploadList.appendChild(row);
+    });
+  }
+
+  function setStatus(msg){ statusEl.textContent = msg; }
+
+  function buildFitCanvas(item, targetW, targetH){
+    const srcCanvas = document.createElement('canvas');
+    srcCanvas.width = item.img.naturalWidth;
+    srcCanvas.height = item.img.naturalHeight;
+    srcCanvas.getContext('2d').drawImage(item.img, 0, 0);
+    const srcW = srcCanvas.width, srcH = srcCanvas.height;
+
+    const fitCanvas = document.createElement('canvas');
+    fitCanvas.width = targetW; fitCanvas.height = targetH;
+    const fctx = fitCanvas.getContext('2d');
+    fctx.imageSmoothingEnabled = true;
+    fctx.imageSmoothingQuality = 'high';
+
+    if(srcW >= targetW && srcH >= targetH){
+      const sx = Math.floor((srcW - targetW)/2);
+      const sy = Math.floor((srcH - targetH)/2);
+      fctx.drawImage(srcCanvas, sx, sy, targetW, targetH, 0, 0, targetW, targetH);
+    } else {
+      fctx.drawImage(srcCanvas, 0, 0, srcW, srcH, 0, 0, targetW, targetH);
+    }
+    return fitCanvas;
+  }
+
+  // ---------- MODE 1: 3등분 (180x180, 540 긴 쪽) ----------
+  function gridSliceAll(){
+    if(loadedImages.length === 0) return;
+    setStatus('✂️ 자르는 중...');
+    gridProcessBtn.disabled = true;
+    setTimeout(()=>{
+      try{
+        const targetW = orientation === 'horizontal' ? LONG : TILE;
+        const targetH = orientation === 'horizontal' ? TILE : LONG;
+
+        const out = [];
+        loadedImages.forEach(item=>{
+          const fitCanvas = buildFitCanvas(item, targetW, targetH);
+          for(let i=0;i<3;i++){
+            const tc = document.createElement('canvas');
+            tc.width = TILE; tc.height = TILE;
+            const tctx = tc.getContext('2d');
+            if(orientation === 'horizontal'){
+              tctx.drawImage(fitCanvas, i*TILE, 0, TILE, TILE, 0, 0, TILE, TILE);
+            } else {
+              tctx.drawImage(fitCanvas, 0, i*TILE, TILE, TILE, 0, 0, TILE, TILE);
+            }
+            out.push({ dataUrl: tc.toDataURL('image/png'), w: TILE, h: TILE, tag: (i+1)+'/3', source:item.name });
+          }
+        });
+
+        stickers = out;
+        renderGallery();
+        setStatus('🎉 ' + loadedImages.length + '개 이미지에서 총 ' + out.length + '개의 180×180 조각을 만들었어요.');
+      }catch(err){
+        console.error(err);
+        setStatus('⚠️ 처리 중 문제가 생겼어요: ' + err.message);
+      }finally{
+        gridProcessBtn.disabled = false;
+      }
+    }, 20);
+  }
+  gridProcessBtn.addEventListener('click', gridSliceAll);
+
+  // ---------- MODE 2: 42컷 전체시트 (1080x1260, 6x7) ----------
+  function full42SliceAll(){
+    if(loadedImages.length === 0) return;
+    setStatus('🧷 42조각으로 자르는 중...');
+    full42ProcessBtn.disabled = true;
+    setTimeout(()=>{
+      try{
+        const out = [];
+        loadedImages.forEach(item=>{
+          const fitCanvas = buildFitCanvas(item, SHEET_W, SHEET_H);
+          let n = 0;
+          for(let r=0;r<SHEET_ROWS;r++){
+            for(let c=0;c<SHEET_COLS;c++){
+              const tc = document.createElement('canvas');
+              tc.width = TILE; tc.height = TILE;
+              const tctx = tc.getContext('2d');
+              tctx.drawImage(fitCanvas, c*TILE, r*TILE, TILE, TILE, 0, 0, TILE, TILE);
+              n++;
+              out.push({ dataUrl: tc.toDataURL('image/png'), w: TILE, h: TILE, tag: n+'/42', source:item.name });
+            }
+          }
+        });
+
+        stickers = out;
+        renderGallery();
+        setStatus('🎉 ' + loadedImages.length + '개 이미지에서 총 ' + out.length + '개의 180×180 조각을 만들었어요 (1080×1260 시트, 6×7).');
+      }catch(err){
+        console.error(err);
+        setStatus('⚠️ 처리 중 문제가 생겼어요: ' + err.message);
+      }finally{
+        full42ProcessBtn.disabled = false;
+      }
+    }, 20);
+  }
+  full42ProcessBtn.addEventListener('click', full42SliceAll);
+
+  // ---------- Gallery ----------
+  function renderGallery(){
+    gallery.innerHTML = '';
+    if(stickers.length === 0){
+      gallery.appendChild(galleryEmpty);
+      galleryCount.textContent = '';
+      saveAllBtn.style.display = 'none';
+      return;
+    }
+    galleryCount.textContent = stickers.length + '개';
+    saveAllBtn.style.display = 'inline-block';
+    stickers.forEach((s, i)=>{
+      const div = document.createElement('div');
+      div.className = 'sticker-thumb';
+      div.title = '탭해서 보드에 추가';
+      const img = document.createElement('img');
+      img.src = s.dataUrl;
+      const plus = document.createElement('div');
+      plus.className = 'plus';
+      plus.textContent = '+';
+      const dl = document.createElement('div');
+      dl.className = 'dl';
+      dl.textContent = '⬇';
+      dl.title = 'PNG로 저장';
+      dl.addEventListener('click', (e)=>{ e.stopPropagation(); downloadSticker(s, i); });
+      const tag = document.createElement('div');
+      tag.className = 'tag';
+      tag.textContent = s.tag;
+      div.appendChild(img);
+      div.appendChild(plus);
+      div.appendChild(dl);
+      div.appendChild(tag);
+      div.addEventListener('click', ()=> addToWorkspace(s));
+      gallery.appendChild(div);
+    });
+  }
+
+  function downloadSticker(s, i){
+    const a = document.createElement('a');
+    a.href = s.dataUrl;
+    a.download = 'mini_cutnpreview_' + String(i+1).padStart(2,'0') + '.png';
+    a.click();
+  }
+
+  saveAllBtn.addEventListener('click', async ()=>{
+    if(stickers.length === 0) return;
+    if(typeof JSZip === 'undefined'){
+      setStatus('⚠️ 압축 라이브러리를 불러오지 못했어요. 인터넷 연결을 확인해주세요.');
+      return;
+    }
+    setStatus('📦 압축 파일을 만드는 중...');
+    saveAllBtn.disabled = true;
+    try{
+      const zip = new JSZip();
+      stickers.forEach((s, i)=>{
+        const base64 = s.dataUrl.split(',')[1];
+        zip.file('mini_cutnpreview_' + String(i+1).padStart(2,'0') + '.png', base64, {base64:true});
+      });
+      const blob = await zip.generateAsync({type:'blob'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'mini_cutnpreview.zip';
+      a.click();
+      setStatus('🎉 조각 ' + stickers.length + '개를 압축 파일 하나로 저장했어요.');
+    }catch(err){
+      console.error(err);
+      setStatus('⚠️ 압축 파일 생성 중 문제가 생겼어요: ' + err.message);
+    }finally{
+      saveAllBtn.disabled = false;
+    }
+  });
+
+  // ---------- Workspace: percentage-based 9x9 grid (preview scales, export stays full-res) ----------
+  const GRID_N = 9;
+  const CELL_PCT = 100 / GRID_N;
+
+  function nextFreeCell(){
+    const occupied = new Set(placed.map(p => p.col + ',' + p.row));
+    for(let r=0; r<GRID_N; r++){
+      for(let c=0; c<GRID_N; c++){
+        const key = c + ',' + r;
+        if(!occupied.has(key)) return { col:c, row:r };
+      }
+    }
+    return { col:0, row:0 };
+  }
+
+  function addToWorkspace(s){
+    wsHint.style.display = 'none';
+    const cell = nextFreeCell();
+
+    const el = document.createElement('div');
+    el.className = 'sticker';
+    el.style.width = CELL_PCT + '%';
+    el.style.height = CELL_PCT + '%';
+    el.style.zIndex = zCounter++;
+
+    const img = document.createElement('img');
+    img.src = s.dataUrl;
+    el.appendChild(img);
+
+    const rotateHandle = document.createElement('div');
+    rotateHandle.className = 'handle rotate';
+    el.appendChild(rotateHandle);
+
+    const delBtn = document.createElement('div');
+    delBtn.className = 'del-btn';
+    delBtn.textContent = '×';
+    el.appendChild(delBtn);
+
+    workspace.appendChild(el);
+
+    const item = { col:cell.col, row:cell.row, rot:0, el, img:s.dataUrl, _liveCol:cell.col, _liveRow:cell.row };
+    placed.push(item);
+    applyTransform(item);
+    selectSticker(item);
+
+    let dragging=false, startPX=0, startPY=0, startCol=0, startRow=0;
+    el.addEventListener('pointerdown', (e)=>{
+      if(e.target === rotateHandle || e.target === delBtn) return;
+      selectSticker(item);
+      dragging = true;
+      el.setPointerCapture(e.pointerId);
+      startPX = e.clientX; startPY = e.clientY;
+      startCol = item.col; startRow = item.row;
+      el.style.zIndex = zCounter++;
+    });
+    el.addEventListener('pointermove', (e)=>{
+      if(!dragging) return;
+      const rectW = workspace.getBoundingClientRect().width;
+      const deltaCells = (e.clientX - startPX) / rectW * GRID_N;
+      const deltaCellsY = (e.clientY - startPY) / rectW * GRID_N;
+      item._liveCol = Math.min(GRID_N-1, Math.max(0, startCol + deltaCells));
+      item._liveRow = Math.min(GRID_N-1, Math.max(0, startRow + deltaCellsY));
+      el.style.left = (item._liveCol * CELL_PCT) + '%';
+      el.style.top = (item._liveRow * CELL_PCT) + '%';
+    });
+    el.addEventListener('pointerup', ()=>{
+      if(!dragging) return;
+      dragging=false;
+      item.col = Math.min(GRID_N-1, Math.max(0, Math.round(item._liveCol)));
+      item.row = Math.min(GRID_N-1, Math.max(0, Math.round(item._liveRow)));
+      applyTransform(item);
+    });
+
+    let rotating=false;
+    rotateHandle.addEventListener('pointerdown', (e)=>{
+      e.stopPropagation();
+      rotating = true;
+      rotateHandle.setPointerCapture(e.pointerId);
+    });
+    rotateHandle.addEventListener('pointermove', (e)=>{
+      if(!rotating) return;
+      const rect = el.getBoundingClientRect();
+      const centerX = rect.left + rect.width/2;
+      const centerY = rect.top + rect.height/2;
+      const angle = Math.atan2(e.clientY-centerY, e.clientX-centerX) * 180/Math.PI + 90;
+      item.rot = angle;
+      applyTransform(item);
+    });
+    rotateHandle.addEventListener('pointerup', (e)=>{
+      e.stopPropagation();
+      if(!rotating) return;
+      rotating=false;
+      item.rot = Math.round(item.rot/90)*90;
+      applyTransform(item);
+    });
+
+    delBtn.addEventListener('pointerdown', (e)=>{
+      e.stopPropagation();
+      workspace.removeChild(el);
+      placed = placed.filter(p => p !== item);
+      if(placed.length === 0) wsHint.style.display = 'flex';
+    });
+  }
+
+  function applyTransform(item){
+    item.el.style.left = (item.col * CELL_PCT) + '%';
+    item.el.style.top = (item.row * CELL_PCT) + '%';
+    item.el.style.transform = 'rotate(' + item.rot + 'deg)';
+  }
+
+  function selectSticker(item){
+    placed.forEach(p => p.el.classList.remove('selected'));
+    item.el.classList.add('selected');
+    selectedItem = item;
+  }
+
+  workspace.addEventListener('pointerdown', (e)=>{
+    if(e.target === workspace || e.target === wsHint){
+      placed.forEach(p => p.el.classList.remove('selected'));
+      selectedItem = null;
+    }
+  });
+
+  document.addEventListener('keydown', (e)=>{
+    if((e.key === 'Delete' || e.key === 'Backspace') && selectedItem){
+      const active = document.activeElement;
+      if(active && active.tagName === 'INPUT') return;
+      workspace.removeChild(selectedItem.el);
+      placed = placed.filter(p => p !== selectedItem);
+      selectedItem = null;
+      if(placed.length === 0) wsHint.style.display = 'flex';
+    }
+  });
+
+  clearBoard.addEventListener('click', ()=>{
+    placed.forEach(p => workspace.removeChild(p.el));
+    placed = [];
+    selectedItem = null;
+    wsHint.style.display = 'flex';
+  });
+
+  // ---------- Export: always full resolution (TILE × GRID_N), independent of preview size ----------
+  downloadBtn.addEventListener('click', ()=>{
+    if(placed.length === 0){
+      setStatus('보드에 조각을 먼저 올려주세요.');
+      return;
+    }
+    const boardPx = TILE * GRID_N; // 1620
+    const scale = Math.max(2, window.devicePixelRatio || 1);
+    exportCanvas.width = Math.round(boardPx * scale);
+    exportCanvas.height = Math.round(boardPx * scale);
+    const ctx = exportCanvas.getContext('2d');
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.clearRect(0,0,boardPx, boardPx);
+
+    if(currentBgKey !== 'none'){
+      ctx.fillStyle = swatchDefs[currentBgKey].bg;
+      ctx.fillRect(0,0,boardPx, boardPx);
+    }
+
+    const sorted = [...placed].sort((a,b)=> parseInt(a.el.style.zIndex) - parseInt(b.el.style.zIndex));
+    const images = sorted.map(item=>{
+      const im = new Image();
+      im.src = item.img;
+      return im;
+    });
+
+    Promise.all(images.map(im => im.complete ? Promise.resolve() : new Promise(res => { im.onload = res; }))).then(()=>{
+      sorted.forEach((item, i)=>{
+        const im = images[i];
+        ctx.save();
+        const cx = item.col * TILE + TILE/2;
+        const cy = item.row * TILE + TILE/2;
+        ctx.translate(cx, cy);
+        ctx.rotate(item.rot * Math.PI/180);
+        ctx.drawImage(im, -TILE/2, -TILE/2, TILE, TILE);
+        ctx.restore();
+      });
+      exportCanvas.toBlob(blob=>{
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'mini_cutnpreview.png';
+        a.click();
+      });
+    });
+  });
+
+})();
+</script>
+</body>
+</html>
